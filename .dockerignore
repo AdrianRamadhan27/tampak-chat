@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+runtime
+**/node_modules
+**/.next
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+.git
+Technical_Test_AI_Engineer.docx
+docs
+tests

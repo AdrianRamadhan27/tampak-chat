@@ -1,0 +1,106 @@
+name: tampak-chat
+x-runtime: &runtime
+  TAMPAK_DATABASE_URL: postgresql://tampak_app:${TAMPAK_APP_DB_PASSWORD}@postgres:5432/tampak
+  TAMPAK_MASTER_KEY: ${TAMPAK_MASTER_KEY}
+  TAMPAK_DATA_DIR: /data
+  TAMPAK_WEB_ORIGIN: ${TAMPAK_WEB_ORIGIN:-http://localhost:3010}
+  TAMPAK_ENV: ${TAMPAK_ENV:-development}
+  TAMPAK_ALLOW_LOCAL_PROVIDERS: ${TAMPAK_ALLOW_LOCAL_PROVIDERS:-true}
+  TAMPAK_EMBEDDING_BATCH_SIZE: ${TAMPAK_EMBEDDING_BATCH_SIZE:-12}
+  TAMPAK_EMBEDDING_INTERVAL_SECONDS: ${TAMPAK_EMBEDDING_INTERVAL_SECONDS:-0.2}
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg16
+    environment:
+      POSTGRES_USER: tampak_owner
+      POSTGRES_PASSWORD: ${TAMPAK_DB_PASSWORD:?Run scripts/bootstrap.py first}
+      POSTGRES_DB: tampak
+    ports:
+      - "127.0.0.1:55434:5432"
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U tampak_owner -d tampak"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  setup:
+    build: ./services/backend
+    user: "${TAMPAK_LOCAL_UID:-1000}:${TAMPAK_LOCAL_GID:-1000}"
+    environment:
+      <<: *runtime
+      TAMPAK_MIGRATION_DATABASE_URL: postgresql://tampak_owner:${TAMPAK_DB_PASSWORD}@postgres:5432/tampak
+      TAMPAK_APP_DB_PASSWORD: ${TAMPAK_APP_DB_PASSWORD}
+      TAMPAK_ADMIN_USERNAME: ${TAMPAK_ADMIN_USERNAME:-admin}
+      TAMPAK_ADMIN_PASSWORD: ${TAMPAK_ADMIN_PASSWORD}
+      TAMPAK_CHAT_BASE_URL: ${TAMPAK_CHAT_BASE_URL:-https://openrouter.ai/api/v1}
+      TAMPAK_CHAT_MODEL: ${TAMPAK_CHAT_MODEL:-}
+      TAMPAK_CHAT_API_KEY: ${TAMPAK_CHAT_API_KEY:-}
+      TAMPAK_OPENROUTER_API_KEY: ${TAMPAK_OPENROUTER_API_KEY:-}
+      TAMPAK_VISION_MODEL: ${TAMPAK_VISION_MODEL:-}
+      TAMPAK_VISION_API_KEY: ${TAMPAK_VISION_API_KEY:-}
+    command: [sh, -c, "python -m app.cli migrate && python -m app.cli seed && docling-tools models download layout tableformer --output-dir /data/docling-models"]
+    volumes:
+      - ./runtime:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+  api:
+    build: ./services/backend
+    user: "${TAMPAK_LOCAL_UID:-1000}:${TAMPAK_LOCAL_GID:-1000}"
+    environment: *runtime
+    volumes:
+      - ./runtime:/data
+    ports:
+      - "127.0.0.1:8100:8100"
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/api/v1/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  chat-worker:
+    build: ./services/backend
+    user: "${TAMPAK_LOCAL_UID:-1000}:${TAMPAK_LOCAL_GID:-1000}"
+    environment: *runtime
+    command: [python, -m, app.worker, chat]
+    volumes:
+      - ./runtime:/data
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+  ingest-worker:
+    mem_limit: 4g
+    cpus: 2
+    pids_limit: 256
+    build: ./services/backend
+    user: "${TAMPAK_LOCAL_UID:-1000}:${TAMPAK_LOCAL_GID:-1000}"
+    environment: *runtime
+    command: [python, -m, app.worker, ingest]
+    volumes:
+      - ./runtime:/data
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      TAMPAK_API_URL: http://api:8100
+      PORT: 3010
+    ports:
+      - "127.0.0.1:3010:3010"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  database:

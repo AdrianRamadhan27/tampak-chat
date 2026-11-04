@@ -1,0 +1,23 @@
+{
+  "name": "tampak-chat",
+  "private": true,
+  "packageManager": "pnpm@10.32.0",
+  "scripts": {
+    "dev": "pnpm --dir apps/web dev",
+    "build": "pnpm --dir apps/web build",
+    "lint": "pnpm --dir apps/web lint",
+    "typecheck": "pnpm --dir apps/web typecheck",
+    "test:backend": "uv run --directory services/backend pytest -q",
+    "test:e2e": "node tests/e2e/workspace.cjs",
+    "local": "python3 scripts/local.py up",
+    "local:stop": "python3 scripts/local.py down",
+    "test:sse": "node tests/e2e/reconnect.cjs",
+    "test:processing": "node tests/e2e/processing.cjs",
+    "test:analytics": "node tests/e2e/analytics.cjs",
+    "format:check": "prettier --check apps/web/src"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1",
+    "prettier": "^3.9.10"
+  }
+}
