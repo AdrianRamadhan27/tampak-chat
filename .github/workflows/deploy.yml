@@ -32,6 +32,7 @@ jobs:
       TAMPAK_DATABASE_URL: postgresql://tampak_app:ci-app-password@127.0.0.1:55434/tampak
       TAMPAK_MIGRATION_DATABASE_URL: postgresql://tampak_owner:ci-owner-password@127.0.0.1:55434/tampak
       TAMPAK_APP_DB_PASSWORD: ci-app-password
+      TAMPAK_DB_PASSWORD: ci-owner-password
       TAMPAK_MASTER_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
       TAMPAK_ADMIN_PASSWORD: ci-admin-fixture-only
     steps:
@@ -58,10 +59,16 @@ jobs:
           pnpm format:check
       - name: Check backend and disposable database integration
         run: |
-          uv run --directory services/backend ruff check app tests
+          uv run --directory services/backend ruff check app tests ../../deploy/verify_access.py
           pnpm test:backend
-      - name: Check deployment scripts
-        run: bash -n deploy/deploy-from-actions.sh
+      - name: Check deployment configuration
+        env:
+          TAMPAK_DATA_PATH: /tmp/tampak-production-fixture
+          TAMPAK_BACKEND_IMAGE: tampak-backend:verification
+          TAMPAK_WEB_IMAGE: tampak-web:verification
+        run: |
+          bash -n deploy/deploy-from-actions.sh
+          docker compose -f deploy/compose.production.yaml config --quiet
 
   build:
     if: github.event_name != 'pull_request'
@@ -117,6 +124,7 @@ jobs:
       contents: read
       packages: read
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Deploy immutable images through restricted SSH
         env:
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
@@ -138,5 +146,5 @@ jobs:
             -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
             -o ServerAliveInterval=15 -o ServerAliveCountMax=8 \
             "$DEPLOY_USER@$DEPLOY_HOST" "deploy $RELEASE $BACKEND_DIGEST $WEB_DIGEST"
-      - name: Verify public HTTPS
-        run: curl --fail --silent --show-error https://chat.tampak.my.id/api/v1/health
+      - name: Verify HTTPS and private access
+        run: python3 deploy/verify_access.py
