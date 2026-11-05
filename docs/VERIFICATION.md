@@ -1,6 +1,6 @@
 # Tampak-Chat verification
 
-Local release · 4 November 2026 · Asia/Jakarta
+Local checks · 4 November 2026 · VPS rollout · 5 November 2026 · Asia/Jakarta
 
 The application was checked locally in native production mode and as the complete Docker Compose stack. Initial checks ran without provider credentials. The owner's subsequently configured OpenRouter key has now been used for real embedding relevance, corpus indexing, Chat streaming and an evidence-grounded follow-up. Vision input remains unverified live. Provider protocol tests use explicit HTTP fixtures; application evidence mode performs actual retrieval and calculations.
 
@@ -8,7 +8,7 @@ The application was checked locally in native production mode and as the complet
 
 | Check | Result |
 | --- | --- |
-| Python backend | **68 passed** in a disposable PostgreSQL database with its own key-free API/workers and private artifacts |
+| Python backend | **69 passed** locally and in GitHub Actions, using a disposable PostgreSQL database with its own key-free API/workers and private artifacts |
 | Python lint | Ruff passed for backend modules, tests and the OCR browser fixture generator |
 | Frontend | TypeScript, ESLint and Prettier checks passed |
 | Production packaging | Next.js standalone build and complete Docker Compose build/start passed |
@@ -16,6 +16,7 @@ The application was checked locally in native production mode and as the complet
 | SSE browser recovery | Passed: leave the chat, return to an active stream, receive remaining output and reload without duplicate text |
 | Scanned-table browser journey | Passed: forced OCR selected in upload, image-only PDF, all table headers/cells, review, publication and chunk-to-source highlights |
 | Analytics browser journey | Passed: 11.1% versus 3.8%, grouped comparison series, 100 filtered source-record previews, 75.07% contribution and success-rate trends with both inspectors hidden |
+| VPS deployment | GitHub Actions verified, built and deployed immutable Linux images; HTTPS health and the admin login gate passed on chat.tampak.my.id |
 
 Run the checks from the repository root:
 
@@ -84,4 +85,18 @@ Known embedding rate limits produce an explicit retrieval notice and a labeled l
 
 The PRD's proposed forty-question grounded-answer evaluation and twelve-document comparative parser benchmark have not been completed. The deterministic test suite is not a substitute for those quality measurements. No retrieval recall, universal OCR accuracy score or fabricated latency percentile is reported.
 
-VPS deployment, public-load testing, a production reverse proxy, hardened parser isolation and a backup/restore drill remain the later deployment phase. See [implementation decisions and remaining planned details](IMPLEMENTATION_STATUS.md) and [local operations](LOCAL_OPERATIONS.md).
+## Live VPS acceptance checks
+
+The [first successful Actions deployment](https://github.com/AdrianRamadhan27/tampak-chat/actions/runs/41942105536) deployed the separate Tampak stack behind the existing Caddy proxy. DNS resolves the chat subdomain to the owner's VPS, HTTPS validates, all production services became healthy and the existing Applicient homepage still returned HTTP 200. No database or application ports were added to the host's public interfaces.
+
+**Private access.** Anonymous bot access and guest creation return HTTP 401. Admin sign-in uses Secure HttpOnly cookies and works in the deployed browser UI; logout revokes API access. The added integration test also rejects pre-existing guest cookies in private mode. All three configured provider profiles are available to the administrator without returning secret key values.
+
+**Seed transfer.** The new production database has all 12 sources and 109 normalized vectors, with matching 4,096-dimensional metadata and embedding fingerprints. Model keys were re-encrypted under a fresh production master key. This transfer made no new embedding calls and excluded local conversations and temporary guest data.
+
+**Real SSE through HTTPS.** A provider-backed SOP question produced its first visible text after 6.353 seconds in this check. The client disconnected, returned while the run was still RUNNING, received 216 remaining text events and reconstructed exactly the persisted answer without duplicate text. The run reported 1,948 input tokens, 757 output tokens, three model calls and $0.00051929. Its follow-up reused the exact originating citations with one Chat call. These are individual observed runs, not latency or quality benchmarks.
+
+**Processing and analytics.** A synthetic image-only table was uploaded to a separate private bot with forced OCR. The deployed Docling/Tesseract pipeline recovered all four rows, headers, at least 16 cell locations and the exact 3.00%, 3.80% and 11.10% values. The measured extraction/review time was 38.36 seconds. Approval retained source geometry; a query of that bot cited only its uploaded source. The temporary verification bot was removed afterward. A separate NTI run produced the exact three monthly rates and a line-chart block, also rendered in the browser.
+
+Private deployment logs, reports and screenshots remain under `runtime/`, outside Git. Administrator credentials are in a separate private file for the owner to share with reviewers. See [VPS deployment and operations](DEPLOYMENT.md).
+
+Public-load testing, stronger isolation for hostile public uploads, off-host backups and a complete backup/restore drill remain future operations. Vision interpretation and the broader retrieval/parser quality benchmarks are still unverified.

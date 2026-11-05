@@ -2,6 +2,8 @@
 
 A document and analytics chatbot workspace with visible workings. Built for the NTI AI Engineer technical test and a portfolio deployment.
 
+**Review deployment:** [chat.tampak.my.id](https://chat.tampak.my.id). Sign in using credentials shared by the owner; the deployed workspace does not allow anonymous sessions.
+
 - **Exact analytics:** typed, read-only dataset queries calculate rates, trends, period comparisons and contribution to an increase, with charts and inspectable source records.
 - **Configurable document processing:** native extraction, Docling layout reconstruction, OCR and vision preserve tables, figures and source locations through reviewed document revisions.
 - **Transparent RAG and observability:** follow retrieval rankings and tools, open highlighted evidence, and watch latency, token estimates and USD cost reconcile through durable SSE.
@@ -146,7 +148,7 @@ docker compose ps
 
 Stop native local processes first to release ports 3010 and 8100. Compose runs setup, PostgreSQL, API, two worker services and the standalone web build. OCR weights persist in the shared data directory. Linux uses CPU PyTorch wheels. The backend runs as a non-root user and the ingestion container has CPU, memory and process limits.
 
-The supplied VPS has not been configured. Its phase includes HTTPS/DNS, a production reverse proxy with SSE buffering disabled, private network policy, parser isolation, off-host encrypted backups, a restore drill and public-load verification. See [the deployment notes](docs/LOCAL_OPERATIONS.md).
+The VPS runs a separate production Compose project behind the existing Caddy proxy. GitHub Actions verifies changes, builds Linux images and deploys immutable digests through a dedicated restricted SSH key. HTTPS, required admin login and real SSE reconnection have passed on the public domain. The 12-source/109-vector seed and encrypted model profiles are available there; local conversation history was not transferred. See [VPS deployment and operations](docs/DEPLOYMENT.md). Off-host backups, a full restore drill, load testing and a stronger parser sandbox for untrusted public uploads remain later operations.
 
 ## Verify
 

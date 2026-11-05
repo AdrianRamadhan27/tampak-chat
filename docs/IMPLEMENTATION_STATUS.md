@@ -1,6 +1,6 @@
 # Tampak-Chat implementation status
 
-Target: full local application. Approved design: Focus with a sidebar that expands on hover and keyboard focus, plus a touch toggle. No commits may be created by Codex.
+Target: full local application and private VPS deployment. Approved design: Focus with a sidebar that expands on hover and keyboard focus, plus a touch toggle.
 
 The local application is implemented. Analytics, document processing and transparent execution are equal parts of the product. Use [the README](../README.md) to run it and [the verification report](VERIFICATION.md) to distinguish completed checks from credential-dependent validation.
 
@@ -8,6 +8,7 @@ The local application is implemented. Analytics, document processing and transpa
 | --- | --- |
 | Services and persistence | Docker Compose runs PostgreSQL, API, separate chat/ingestion workers and the production web app. Native process startup is also provided. |
 | Guest/admin isolation | Private cookie sessions, CSRF, scoped API access, forced row policies, encrypted provider keys and explicit admin login. Tested using the runtime database role. |
+| Private review deployment | HTTPS at chat.tampak.my.id, required administrator login, disabled guest creation, isolated containers/storage and GitHub Actions deployment using immutable images and a restricted SSH key. |
 | Multiple bots | Guest-owned temporary bots; admin-owned persistent and published bots; rename, configuration and deletion. Seeded NTI Operations is available immediately. |
 | Expanded NTI corpus | Twelve sources: four PDFs (60 pages), two DOCX references, five Markdown guides and the unchanged 30,180-row CSV. Approximately 11,000 document words and 109 chunks; explicit refresh preserves old revisions and other bots. |
 | Sources and revisions | Upload, duplicate detection, disable, delete, replace and reprocess; preview and approval; atomic activation preserves the old revision on failure. |
@@ -37,4 +38,6 @@ The initial planning documents also proposed one-click corpus cloning, a scoped 
 
 The free Nemotron attempt exhausted its daily quota. The owner then approved a cheap paid model; all NTI vectors were rebuilt using Qwen3 Embedding 8B, including seven newly added documents. OpenRouter reported $0.00015717 for 16 indexing calls and 15,717 input tokens. Model migration, retry, named-source retrieval and tenant isolation have deterministic tests. Chat and Vision remain configured as admin-only. Chat streaming and an exact-evidence follow-up have passed live; Vision input remains unverified. Evidence mode uses real retrieval and exact calculations without simulated inference.
 
-The VPS, public HTTPS, hardened parser isolation, off-host backups and a production restore drill remain the later deployment phase requested by the owner. No commits were created.
+The VPS and public HTTPS are deployed through GitHub Actions. Live checks cover admin authentication, provider configuration, original-evidence follow-ups, real SSE reconnection, OCR/table reconstruction, private-corpus isolation and exact chart values. The existing Applicient site remains operational. Deployment commits use the owner's GitHub identity and separate infrastructure, backend, UI, tests, documentation and CI work.
+
+The deployed application is restricted to the owner and invited reviewers. Stronger per-job parser isolation for hostile public uploads, off-host backups, a full restore drill and public-load testing remain future operations. See [deployment details](DEPLOYMENT.md).

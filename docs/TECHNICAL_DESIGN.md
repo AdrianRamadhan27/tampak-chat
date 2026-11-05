@@ -600,6 +600,8 @@ Implemented guest retention is a fixed 24-hour lifetime. Private telemetry follo
 
 ## 18 Execution safety and public deployment boundary
 
+The 5 November review deployment requires the existing administrator login and disables guest sessions through `TAMPAK_AUTH_REQUIRED=true`. Its non-root, read-only application containers have resource limits, dropped capabilities and no-new-privileges. This is an authenticated review deployment; the stronger per-job isolation below remains a requirement before accepting hostile anonymous uploads.
+
 Treat source files, OCR output, VLM output, retrieved instructions and dataset values as untrusted input. File parsers and analytics run with page, CPU, memory, disk and wall-clock limits. Disable active document content and avoid unsafe deserialization. Sanitize rendered Markdown and HTML; source downloads use controlled content disposition and media types.
 
 Local development can use bounded subprocesses for owner-controlled fixtures. Before public uploads on the VPS, use an OS or container sandbox for parser and analytics execution, with only the current job's read-only input and scratch output, no database or provider secrets, and no general network access. A subprocess by itself is not a security sandbox. Keep the runner narrow; do not expose the Docker socket to the public-facing application.
@@ -608,7 +610,7 @@ The trusted worker coordinates jobs and remote VLM calls. It sends only authoriz
 
 Additional controls are server-side role and scope checks, login throttling, per-session plus IP and global quotas, secret redaction, no arbitrary URL ingestion, and no unrestricted code-execution tool. These controls are directly motivated by guest-created bots and admin-funded inference.
 
-## 19 Local startup and later VPS operation
+## 19 Local startup and VPS operation
 
 ### Bootstrap behavior
 

@@ -55,8 +55,8 @@ docker compose exec -T postgres pg_dump -U tampak_owner -d tampak -Fc > runtime/
 
 A full local dump includes currently retained temporary data. It is not a public-deployment retention policy. For the VPS, decide whether temporary content is excluded from backups, document any retention lag, encrypt backups off-host and verify a restore in an isolated database before relying on them. Never run a destructive restore against the active database as a smoke test.
 
-## VPS handoff
+## VPS operation
 
-The application and Compose files are prepared for local use. VPS rollout still needs the host/domain, TLS termination, ingress and network rules, worker/resource sizing, a narrow parser sandbox, storage limits, backup destination and a real reverse-proxy SSE test. Keep `X-Accel-Buffering: no`, disable proxy response buffering/cache for event routes, and set a connection timeout suitable for long runs. Do not expose PostgreSQL or the Docker socket to public requests.
+The private review deployment is live at https://chat.tampak.my.id. Its separate Compose project, GitHub Actions workflow, restricted deployment key, HTTPS proxy, required administrator login and real SSE recovery are documented in [VPS deployment](DEPLOYMENT.md). Local Docker can also honor `TAMPAK_AUTH_REQUIRED=true`; temporary guest access remains the local default. PostgreSQL and application services have no public host ports in the production stack.
 
-Local subprocess bounds and container memory limits do not provide a complete hostile-document sandbox. Before accepting public uploads on the VPS, isolate parsers from database/provider secrets and general network access. This is deployment work, separate from the functioning local demonstration.
+Subprocess bounds, dropped container capabilities, read-only roots and resource limits do not provide a complete hostile-document sandbox. The current deployment is restricted to authenticated reviewers. Before enabling anonymous public uploads, isolate each parser job from other documents, database/provider secrets and general network access. Off-host backup storage, a retention policy, restore verification and public-load testing remain separate operations.
