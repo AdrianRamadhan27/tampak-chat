@@ -1,0 +1,143 @@
+name: tampak-chat
+
+x-runtime: &runtime
+  TAMPAK_ENV: production
+  TAMPAK_AUTH_REQUIRED: "true"
+  TAMPAK_DATABASE_URL: postgresql://tampak_app:${TAMPAK_APP_DB_PASSWORD}@postgres:5432/tampak
+  TAMPAK_MASTER_KEY: ${TAMPAK_MASTER_KEY}
+  TAMPAK_DATA_DIR: /data
+  TAMPAK_WEB_ORIGIN: https://chat.tampak.my.id
+  TAMPAK_ALLOW_LOCAL_PROVIDERS: "false"
+  TAMPAK_EMBEDDING_BATCH_SIZE: "12"
+  TAMPAK_EMBEDDING_INTERVAL_SECONDS: "0.2"
+
+x-backend: &backend
+  image: ${TAMPAK_BACKEND_IMAGE:?Set an immutable backend image}
+  user: "10001:10001"
+  environment: *runtime
+  volumes:
+    - ${TAMPAK_DATA_PATH:?Set persistent storage}:/data
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  read_only: true
+  tmpfs:
+    - /tmp:size=128m,mode=1777
+  pids_limit: 160
+  logging:
+    driver: json-file
+    options: {max-size: 10m, max-file: "3"}
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg16
+    environment:
+      POSTGRES_USER: tampak_owner
+      POSTGRES_PASSWORD: ${TAMPAK_DB_PASSWORD}
+      POSTGRES_DB: tampak
+    volumes:
+      - database:/var/lib/postgresql/data
+    networks: [private]
+    mem_limit: 384m
+    cpus: 0.5
+    shm_size: 128m
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U tampak_owner -d tampak"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+    restart: unless-stopped
+
+  setup:
+    <<: *backend
+    environment:
+      <<: *runtime
+      TAMPAK_MIGRATION_DATABASE_URL: postgresql://tampak_owner:${TAMPAK_DB_PASSWORD}@postgres:5432/tampak
+      TAMPAK_APP_DB_PASSWORD: ${TAMPAK_APP_DB_PASSWORD}
+      TAMPAK_ADMIN_USERNAME: ${TAMPAK_ADMIN_USERNAME:-admin}
+      TAMPAK_ADMIN_PASSWORD: ${TAMPAK_ADMIN_PASSWORD}
+    command: [sh, -c, "python -m app.cli migrate && python -m app.cli seed"]
+    networks: [private, egress]
+    mem_limit: 768m
+    cpus: 1
+    restart: "no"
+
+  api:
+    <<: *backend
+    command: [uvicorn, app.main:app, --host, 0.0.0.0, --port, "8100", --proxy-headers, --forwarded-allow-ips, "172.31.221.0/28"]
+    networks:
+      private:
+      egress:
+      edge:
+        aliases: [tampak-api]
+    depends_on:
+      postgres: {condition: service_healthy}
+    mem_limit: 320m
+    cpus: 0.5
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/api/v1/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+
+  chat-worker:
+    <<: *backend
+    command: [python, -m, app.worker, chat]
+    networks: [private, egress]
+    depends_on:
+      api: {condition: service_healthy}
+    mem_limit: 384m
+    cpus: 0.75
+
+  ingest-worker:
+    <<: *backend
+    command: [python, -m, app.worker, ingest]
+    networks: [private, egress]
+    depends_on:
+      api: {condition: service_healthy}
+    mem_limit: 1536m
+    cpus: 1
+    pids_limit: 192
+
+  web:
+    image: ${TAMPAK_WEB_IMAGE:?Set an immutable web image}
+    environment:
+      PORT: "3010"
+      TAMPAK_API_URL: http://tampak-api:8100
+    networks:
+      edge:
+        aliases: [tampak-web]
+    depends_on:
+      api: {condition: service_healthy}
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    cpus: 0.5
+    pids_limit: 100
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3010/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: "3"}
+    restart: unless-stopped
+
+networks:
+  private:
+    internal: true
+  egress:
+  edge:
+    name: tampak-edge
+    external: true
+
+volumes:
+  database:

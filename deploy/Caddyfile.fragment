@@ -1,0 +1,24 @@
+# Append to the existing Caddyfile; preserve its global options and other sites.
+# Connect that Caddy container to the external tampak-edge Docker network.
+chat.tampak.my.id {
+    encode zstd gzip
+    request_body {
+        max_size 11MB
+    }
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        X-Frame-Options DENY
+        Strict-Transport-Security "max-age=31536000"
+        -Server
+    }
+    handle /api/* {
+        reverse_proxy tampak-api:8100 {
+            flush_interval -1
+            stream_timeout 15m
+        }
+    }
+    handle {
+        reverse_proxy tampak-web:3010
+    }
+}

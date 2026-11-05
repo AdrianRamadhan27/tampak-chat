@@ -1,0 +1,142 @@
+name: Verify and deploy Tampak-Chat
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tampak-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.6-pg16
+        env:
+          POSTGRES_USER: tampak_owner
+          POSTGRES_PASSWORD: ci-owner-password
+          POSTGRES_DB: tampak
+        ports: [55434:5432]
+        options: >-
+          --health-cmd "pg_isready -U tampak_owner -d tampak"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      TAMPAK_DATABASE_URL: postgresql://tampak_app:ci-app-password@127.0.0.1:55434/tampak
+      TAMPAK_MIGRATION_DATABASE_URL: postgresql://tampak_owner:ci-owner-password@127.0.0.1:55434/tampak
+      TAMPAK_APP_DB_PASSWORD: ci-app-password
+      TAMPAK_MASTER_KEY: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDA=
+      TAMPAK_ADMIN_PASSWORD: ci-admin-fixture-only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@f53f5227a9e83886ab598c617f3c170fab62f0d3 # v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          cache: pnpm
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: "0.12.5"
+          enable-cache: true
+      - name: Install OCR and dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng tesseract-ocr-ind
+          pnpm install --frozen-lockfile
+          uv sync --directory services/backend --frozen
+      - name: Check frontend
+        run: |
+          pnpm typecheck
+          pnpm lint
+          pnpm format:check
+      - name: Check backend and disposable database integration
+        run: |
+          uv run --directory services/backend ruff check app tests
+          pnpm test:backend
+      - name: Check deployment scripts
+        run: bash -n deploy/deploy-from-actions.sh
+
+  build:
+    if: github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      backend: ${{ steps.backend.outputs.digest }}
+      web: ${{ steps.web.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build backend and processing runtime
+        id: backend
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: services/backend
+          push: true
+          platforms: linux/amd64
+          tags: ghcr.io/adrianramadhan27/tampak-backend:${{ github.sha }}
+          labels: org.opencontainers.image.source=https://github.com/AdrianRamadhan27/tampak-chat
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+      - name: Build web runtime
+        id: web
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          platforms: linux/amd64
+          tags: ghcr.io/adrianramadhan27/tampak-web:${{ github.sha }}
+          labels: org.opencontainers.image.source=https://github.com/AdrianRamadhan27/tampak-chat
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment:
+      name: production
+      url: https://chat.tampak.my.id
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Deploy immutable images through restricted SSH
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE: ${{ github.sha }}
+          BACKEND_DIGEST: ${{ needs.build.outputs.backend }}
+          WEB_DIGEST: ${{ needs.build.outputs.web }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_KEY" > "$HOME/.ssh/tampak-deploy"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          trap 'rm -f "$HOME/.ssh/tampak-deploy"' EXIT
+          printf '%s\n' "$GHCR_TOKEN" | ssh -i "$HOME/.ssh/tampak-deploy" \
+            -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=15 -o ServerAliveCountMax=8 \
+            "$DEPLOY_USER@$DEPLOY_HOST" "deploy $RELEASE $BACKEND_DIGEST $WEB_DIGEST"
+      - name: Verify public HTTPS
+        run: curl --fail --silent --show-error https://chat.tampak.my.id/api/v1/health
