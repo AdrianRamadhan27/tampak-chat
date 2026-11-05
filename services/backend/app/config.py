@@ -24,6 +24,7 @@ EMBEDDING_FINGERPRINT = f"openrouter:{EMBEDDING_MODEL}:4096:cosine:qwen-query-v1
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="TAMPAK_", env_file=ROOT / ".env", extra="ignore")
     env: str = "development"
+    auth_required: bool = False
     database_url: SecretStr
     migration_database_url: SecretStr | None = None
     app_db_password: SecretStr = SecretStr("")

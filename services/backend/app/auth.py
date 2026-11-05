@@ -46,6 +46,8 @@ async def current(request: Request, validate_csrf: bool = True) -> Identity:
     )
     if not row:
         raise AppError("SESSION_REQUIRED", "Start a session to continue.", 401)
+    if settings().auth_required and row["kind"] != "ADMIN":
+        raise AppError("AUTH_REQUIRED", "Sign in to access this workspace.", 401)
     if validate_csrf and request.method not in {"GET", "HEAD", "OPTIONS"}:
         if not secrets.compare_digest(request.headers.get("x-csrf-token", ""), row["csrf_token"]):
             raise AppError("CSRF_INVALID", "Refresh the page and try again.", 403)
@@ -89,6 +91,8 @@ async def issue(response: Response, principal_id: str, kind: str) -> Identity:
 
 async def guest(request: Request, response: Response) -> Identity:
     check_origin(request)
+    if settings().auth_required:
+        raise AppError("AUTH_REQUIRED", "Sign in to access this workspace.", 401)
     try:
         return await current(request, validate_csrf=False)
     except AppError as error:

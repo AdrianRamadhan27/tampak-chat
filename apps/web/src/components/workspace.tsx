@@ -71,6 +71,7 @@ const Admin = dynamic(() => import("./admin"), {
     <div className="content-page muted">Opening model settings…</div>
   ),
 });
+const Login = dynamic(() => import("./login"));
 const NAV = [
   { view: "chat", label: "Conversation", icon: MessageSquare },
   { view: "bots", label: "Chatbots", icon: Layers },
@@ -79,6 +80,8 @@ const NAV = [
 ] as const;
 
 export function Workspace() {
+  const [requiresLogin, setRequiresLogin] = useState(false);
+  const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
   const [session, setSession] = useState<Session | null>(null);
   const [bots, setBots] = useState<Bot[]>([]);
   const [botId, setBotId] = useState("");
@@ -197,14 +200,20 @@ export function Workspace() {
           view: nextView,
         };
       } catch (error) {
-        if (!disposed) setError(errorMessage(error));
+        if (!disposed) {
+          if (error instanceof ApiError && error.code === "AUTH_REQUIRED") {
+            setRequiresLogin(true);
+          } else {
+            setError(errorMessage(error));
+          }
+        }
       }
     }
     void initialize();
     return () => {
       disposed = true;
     };
-  }, []);
+  }, [bootstrapAttempt]);
 
   useEffect(() => {
     if (!session || !botId) return;
@@ -414,9 +423,9 @@ export function Workspace() {
   async function logout() {
     try {
       await post("/session/logout");
-      await post("/session/guest");
-      await sessionChanged();
-      newConversation();
+      // A full navigation clears cached conversation state after signing out.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign("/");
     } catch (error) {
       setError(errorMessage(error));
     }
@@ -431,6 +440,20 @@ export function Workspace() {
       source.conversation_id === conversationId &&
       source.enabled,
   );
+
+  if (requiresLogin)
+    return (
+      <main>
+        <Login
+          purpose="workspace"
+          onSessionChanged={async () => {
+            setError("");
+            setRequiresLogin(false);
+            setBootstrapAttempt((attempt) => attempt + 1);
+          }}
+        />
+      </main>
+    );
 
   if (!session)
     return (

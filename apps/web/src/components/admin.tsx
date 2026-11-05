@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import {
   Check,
   Database,
-  KeyRound,
   LockKeyhole,
   RefreshCw,
   Save,
@@ -12,7 +11,8 @@ import {
   Sparkles,
   Zap,
 } from "lucide-react";
-import { api, errorMessage, post, setCsrf } from "@/lib/api";
+import { api, errorMessage, post } from "@/lib/api";
+import Login from "./login";
 import type { CatalogModel, Profile, Session } from "@/lib/types";
 import { Badge, Button, ErrorBanner } from "./ui";
 
@@ -67,7 +67,7 @@ export default function Admin({
     };
   }, [session.id, session.kind]);
   if (session.kind !== "ADMIN")
-    return <AdminLogin onSessionChanged={onSessionChanged} />;
+    return <Login onSessionChanged={onSessionChanged} />;
   return (
     <div className="content-page admin-page">
       <div className="page-heading">
@@ -187,83 +187,6 @@ export default function Admin({
             are retried only by an explicit action.
           </p>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function AdminLogin({
-  onSessionChanged,
-}: {
-  onSessionChanged: () => Promise<void>;
-}) {
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      const result = await post<{ csrf: string }>("/session/login", {
-        username,
-        password,
-      });
-      setCsrf(result.csrf);
-      setPassword("");
-      await onSessionChanged();
-    } catch (error) {
-      setError(errorMessage(error));
-    } finally {
-      setBusy(false);
-    }
-  }
-  return (
-    <div className="login-page">
-      <div className="login-card">
-        <div className="empty-icon">
-          <KeyRound size={25} />
-        </div>
-        <span className="eyebrow">TAMPAK-CHAT BACK OFFICE</span>
-        <h1>
-          A little control
-          <br />
-          behind the visibility.
-        </h1>
-        <p>Sign in to manage model providers, keys and inference budgets.</p>
-        <form className="form-stack" onSubmit={submit}>
-          {error && <ErrorBanner message={error} />}
-          <label>
-            Username
-            <input
-              name="username"
-              autoComplete="username"
-              required
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-            />
-          </label>
-          <label>
-            Password
-            <input
-              type="password"
-              name="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
-          <Button type="submit" variant="primary" busy={busy}>
-            Sign in
-            <LockKeyhole size={14} />
-          </Button>
-        </form>
-        <p className="muted small">
-          Local credentials are generated during bootstrap and stored in the
-          private .env file. They are never bundled into the app.
-        </p>
       </div>
     </div>
   );
