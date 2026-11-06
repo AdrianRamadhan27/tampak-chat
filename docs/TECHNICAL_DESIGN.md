@@ -278,6 +278,8 @@ Use structural chunks first: heading-bound paragraphs, list groups, table row gr
 
 The local prose defaults are 1,400 characters with 160-character overlap, configurable per upload. Table chunks repeat headers and retain row ranges. Budget headings and Qwen’s query instruction within the configured input limit; the profile conservatively uses a 32,768-token allowance and 4,096 dimensions. Never silently truncate evidence. A model or query-format change requires a new fingerprint. [Qwen model card](https://huggingface.co/Qwen/Qwen3-Embedding-8B), [OpenRouter listing](https://openrouter.ai/qwen/qwen3-embedding-8b).
 
+The `section-v2` chunker starts a new group at each parsed heading and repeats the nearest heading on subsequent prose, table row groups and figure descriptions. It carries that context across page boundaries with the heading's actual page and element locator. Heading and table-header text count toward the character budget. Oversized cells become labeled row/column fragments; unusually large headings or table headers remain searchable bounded text rather than an unbounded repeated prefix. This uses headings supplied by the parser; it does not invent section structure for plain extracted lines. Existing indexed sources need a new reviewed revision to adopt the changed chunks while preserving earlier cited evidence.
+
 ### Query retrieval path
 
 1. Authorize the bot and conversation; pin ready source and attachment generations.

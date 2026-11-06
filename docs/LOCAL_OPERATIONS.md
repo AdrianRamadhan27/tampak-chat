@@ -34,6 +34,7 @@ Guest cleanup runs periodically in the worker. Expired principals lose API acces
 - Empty or output-limited chat: inspect the visible error and attempt ledger. In OpenRouter profiles, reasoning shares the output allowance; reduce reasoning or increase the output limit in Admin, then retry. New chat defaults are reasoning off and 4,096 output tokens. Private reasoning text is never stored.
 - Evidence action after a source is withdrawn: the original chunks must still be authorized and active. Ask a new question to search the current corpus; a contextual action will not silently substitute different evidence.
 - Changed analysis source: a follow-up does not silently switch datasets; start a new conversation to select current sources.
+- Chunking upgrade: reprocess an affected document, review the extraction and approve the new revision. Code deployment alone does not rewrite its stored chunks. The `section-v2` chunker keeps parsed headings with prose, tables and figures; creating a new revision preserves earlier citations. `refresh-seed` skips already-ready unchanged packaged sources, so it is not a chunking migration command.
 
 The embedding fingerprint pins model, dimensions and normalization semantics. No model fallback or mixed embedding generation is allowed. Replacing the embedding model is a future explicit migration, not a settings toggle for the existing index.
 

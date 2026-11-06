@@ -1,6 +1,6 @@
 # Tampak-Chat verification
 
-Local checks · 4 November 2026 · VPS rollout · 5 November 2026 · Asia/Jakarta
+Local checks · 4 November 2026 · VPS rollout · 5 November 2026 · Chunking regression · 6 November 2026 · Asia/Jakarta
 
 The application was checked locally in native production mode and as the complete Docker Compose stack. Initial checks ran without provider credentials. The owner's subsequently configured OpenRouter key has now been used for real embedding relevance, corpus indexing, Chat streaming and an evidence-grounded follow-up. Vision input remains unverified live. Provider protocol tests use explicit HTTP fixtures; application evidence mode performs actual retrieval and calculations.
 
@@ -8,7 +8,7 @@ The application was checked locally in native production mode and as the complet
 
 | Check | Result |
 | --- | --- |
-| Python backend | **69 passed** locally and in GitHub Actions, using a disposable PostgreSQL database with its own key-free API/workers and private artifacts |
+| Python backend | **76 passed** locally, using a disposable PostgreSQL database with its own key-free API/workers and private artifacts; GitHub Actions reruns the same suite before deployment |
 | Python lint | Ruff passed for backend modules, tests and the OCR browser fixture generator |
 | Frontend | TypeScript, ESLint and Prettier checks passed |
 | Production packaging | Next.js standalone build and complete Docker Compose build/start passed |
@@ -43,6 +43,8 @@ Backend tests create a randomly named `tampak_test_*` database, clear inference 
 **Knowledge versus attachments.** A new conversation has a null ID; permanent sources also have null conversation scope. The attachment filter now requires an actual conversation ID, so those sources never appear as removable chat files. Detachment uses a conversation-scoped endpoint that rejects permanent sources and other conversations' attachments. Knowledge changes require an explicit management-purpose field, preventing cached clients from accidentally disabling corpus sources through the old attachment path. Regression checks verify that removing an attachment preserves permanent evidence, a later run excludes the detached file, and uploading that file again reuses and re-enables the private attachment.
 
 **Document provenance.** Seed PDF page 7 contains the cited incident finding and real normalized parser geometry. Table chunks repeat headers and retain row ranges. Native DOCX uses section anchors without invented page boxes. Repeated passages retain distinct source positions. A real local Tesseract image check verifies recognized text and word confidence/geometry. Retry tests verify that completed embedding batches are reused and changed text loses stale vectors. Empty extraction cannot be published as searchable.
+
+**Section/table retrieval regression.** The production question “Minimum evidence fields apa aja” selected a handbook chunk ending in that heading, while its separate six-row table was absent from the six selected passages. The model completed with an unsupported-fields explanation rather than the requested list. The `section-v2` chunker keeps the heading and full small table together, repeats the heading and column headers on larger row groups, and starts a new group at subsequent headings. Seven added regression tests cover that exact bilingual retrieval query, all six handbook fields, row preservation, figure context, cross-page provenance, large cell fragments and bounded oversized headings/headers. Prior source revisions remain available; adopting the new chunks requires reprocessing and approving a new revision.
 
 **Provider contracts and costs.** Mock HTTP tests cover compatible SSE content, usage, failures, fixed embedding model/endpoint and dimensions. Ledger tests distinguish reported, calculated and unavailable costs; failed/uncertain attempts keep their budget reservations. These checks establish adapter behavior rather than provider availability or semantic model quality.
 

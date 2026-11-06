@@ -316,107 +316,168 @@ async def process_revision(revision_id: str) -> None:
 
 
 def make_chunks(extraction: dict, options: dict) -> list[dict]:
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=options.get("chunk_size", 1400),
-        chunk_overlap=options.get("chunk_overlap", 160),
-        separators=["\n\n", "\n", ". ", " ", ""],
-        add_start_index=True,
-    )
+    """Keep section context with its body, tables and figure descriptions.
+
+    The prefix counts toward the configured size and has its own source locator,
+    including when the section continues on another physical page.
+    """
+    chunk_size = options.get("chunk_size", 1400)
+    overlap = options.get("chunk_overlap", 160)
     chunks = []
+    section: tuple[int, dict] | None = None
+    section_used = False
+
+    def splitter(prefix: str = "") -> RecursiveCharacterTextSplitter:
+        available = chunk_size - len(prefix)
+        return RecursiveCharacterTextSplitter(
+            chunk_size=available,
+            chunk_overlap=min(overlap, available - 1),
+            separators=["\n\n", "\n", ". ", " ", ""],
+            add_start_index=True,
+        )
+
+    def locator(block: dict, page: int) -> dict:
+        return {
+            "page": page,
+            "block_id": block["id"],
+            "bbox": block.get("bbox"),
+            "kind": block["type"],
+            "generated": block.get("generated", False),
+        }
+
+    def context(heading: tuple[int, dict] | None) -> tuple[str, list[dict], dict]:
+        return (
+            heading[1]["text"] + "\n" if heading else "",
+            [locator(heading[1], heading[0])] if heading else [],
+            {"section_heading": heading[1]["text"]} if heading else {},
+        )
+
+    def text_parts(blocks: list[dict], page: int, heading: tuple[int, dict] | None) -> None:
+        prefix, heading_locators, metadata = context(heading)
+        text = "\n".join(block["text"] for block in blocks)
+        locators = [locator(block, page) for block in blocks]
+        starts = []
+        offset = 0
+        for block in blocks:
+            starts.append((offset, offset + len(block["text"])))
+            offset += len(block["text"]) + 1
+        for document in splitter(prefix).create_documents([text]):
+            part = document.page_content
+            first = document.metadata["start_index"]
+            last = first + len(part)
+            selected = [
+                loc
+                for loc, (start, end) in zip(locators, starts, strict=True)
+                if start < last and end > first
+            ]
+            cited = (selected or locators) + heading_locators
+            chunks.append(
+                {
+                    "text": prefix + part,
+                    "locators": cited,
+                    "metadata": {
+                        "format": extraction["format"],
+                        "chunking_version": "section-v2",
+                        "generated": any(loc["generated"] for loc in cited),
+                        **metadata,
+                    },
+                }
+            )
+
+    def flush(group: list[dict], page: int) -> None:
+        nonlocal section_used
+        if not group:
+            return
+        text_parts(group, page, section)
+        section_used = True
+        group.clear()
+
     for page in extraction["pages"]:
         group: list[dict] = []
-
-        def flush(group=group, page=page) -> None:
-            if not group:
-                return
-            text = "\n".join(block["text"] for block in group)
-            locators = [
-                {
-                    "page": page["number"],
-                    "block_id": block["id"],
-                    "bbox": block.get("bbox"),
-                    "kind": block["type"],
-                    "generated": block.get("generated", False),
-                }
-                for block in group
-            ]
-            starts = []
-            offset = 0
-            for block in group:
-                starts.append((offset, offset + len(block["text"])))
-                offset += len(block["text"]) + 1
-            for document in splitter.create_documents([text]):
-                part = document.page_content
-                first = document.metadata["start_index"]
-                last = first + len(part)
-                selected = [
-                    loc
-                    for loc, (start, end) in zip(locators, starts, strict=True)
-                    if start < last and end > first
-                ]
-                chunks.append(
-                    {
-                        "text": part,
-                        "locators": selected or locators,
-                        "metadata": {
-                            "format": extraction["format"],
-                            "generated": any(b.get("generated") for b in group),
-                        },
-                    }
-                )
-            group.clear()
-
         for block in page["blocks"]:
             if not block.get("text", "").strip():
                 continue
+            if block["type"] == "heading":
+                flush(group, page["number"])
+                if section and not section_used:
+                    text_parts([section[1]], section[0], None)
+                # An unusually long heading is searchable text, rather than an
+                # unbounded prefix on every subsequent chunk.
+                section = (page["number"], block) if len(block["text"]) < chunk_size // 2 else None
+                section_used = False
+                if section is None:
+                    text_parts([block], page["number"], None)
+                continue
             if block["type"] == "table" and block.get("rows") and len(block["rows"]) > 1:
-                flush()
+                flush(group, page["number"])
                 rows = block["rows"]
                 header = " | ".join(rows[0])
+                prefix, heading_locators, metadata = context(section)
+                table_prefix = prefix + header + "\n"
+                # Extremely wide headers cannot be repeated within the size
+                # budget. Preserve their content and source anchor as text.
+                if len(table_prefix) + max(len(label) for label in rows[0]) + 40 >= chunk_size:
+                    text_parts(
+                        [block | {"text": "\n".join(" | ".join(row) for row in rows)}],
+                        page["number"],
+                        section,
+                    )
+                    section_used = True
+                    continue
                 packed, first, last = [], 1, 0
 
                 def table_part(
-                    text, first_row, last_row, block=block, page=page, header=header, rows=rows
+                    text,
+                    first_row,
+                    last_row,
+                    block=block,
+                    page=page,
+                    rows=rows,
+                    table_prefix=table_prefix,
+                    heading_locators=heading_locators,
+                    metadata=metadata,
                 ):
                     chunks.append(
                         {
-                            "text": header + "\n" + text,
+                            "text": table_prefix + text,
                             "locators": [
                                 {
-                                    "page": page["number"],
-                                    "block_id": block["id"],
-                                    "bbox": block.get("bbox"),
-                                    "kind": "table",
+                                    **locator(block, page["number"]),
                                     "row_start": first_row,
                                     "row_end": last_row,
                                 }
-                            ],
+                            ]
+                            + heading_locators,
                             "metadata": {
                                 "format": extraction["format"],
+                                "chunking_version": "section-v2",
                                 "table_header": rows[0],
                                 "row_start": first_row,
                                 "row_end": last_row,
-                                "generated": block.get("generated", False),
+                                "generated": block.get("generated", False)
+                                or any(loc["generated"] for loc in heading_locators),
+                                **metadata,
                             },
                         }
                     )
 
                 for row_number, row in enumerate(rows[1:], 1):
                     text = " | ".join(row)
-                    if packed and len(header) + sum(len(line) + 1 for line in packed) + len(
-                        text
-                    ) > options.get("chunk_size", 1400):
+                    if (
+                        packed
+                        and len(table_prefix) + sum(len(line) + 1 for line in packed) + len(text)
+                        > chunk_size
+                    ):
                         table_part("\n".join(packed), first, last)
                         packed = []
-                    if len(text) > options.get("chunk_size", 1400):
+                    if len(table_prefix) + len(text) > chunk_size:
                         for column, value in enumerate(row):
                             label = (
                                 rows[0][column] if column < len(rows[0]) else f"Column {column + 1}"
                             )
-                            for part in splitter.split_text(value):
-                                table_part(
-                                    f"Row {row_number} / {label}: {part}", row_number, row_number
-                                )
+                            cell_label = f"Row {row_number} / {label}: "
+                            for part in splitter(table_prefix + cell_label).split_text(value):
+                                table_part(cell_label + part, row_number, row_number)
                         continue
                     if not packed:
                         first = row_number
@@ -424,16 +485,19 @@ def make_chunks(extraction: dict, options: dict) -> list[dict]:
                     last = row_number
                 if packed:
                     table_part("\n".join(packed), first, last)
+                section_used = True
                 continue
             if block["type"] in {"table", "figure"}:
-                flush()
+                flush(group, page["number"])
                 group.append(block)
-                flush()
+                flush(group, page["number"])
             else:
                 group.append(block)
-                if sum(len(b["text"]) for b in group) > options.get("chunk_size", 1400):
-                    flush()
-        flush()
+                if sum(len(b["text"]) for b in group) > chunk_size:
+                    flush(group, page["number"])
+        flush(group, page["number"])
+    if section and not section_used:
+        text_parts([section[1]], section[0], None)
     if len(chunks) > 300:
         raise AppError(
             "CHUNK_LIMIT", "This upload exceeds the 300-chunk demo limit. Split the document.", 413
