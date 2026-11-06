@@ -45,4 +45,15 @@ The five NTI examples are an authored demonstration set. Their results do not es
 
 A local five-case run on 6 November 2026 completed 78 generator/embedding/judge calls in 232.37 seconds for $0.0263225758 recorded cost. It scored context precision 0.9786, context recall 1.0000, faithfulness 0.9780 and factual-correctness F1 0.4220, with five scored samples per metric and no metric errors. These are observations from that run, not acceptance thresholds. The responses included claims beyond the brief references and one unexpected language switch on an English question. The answer prompt now states the current question's language explicitly. Reference coverage, answer verbosity and language behavior need further evaluation; a low reference F1 is not interchangeable with a hallucination rate.
 
+A subsequent production run on 6 November 2026 (`c2b9cd63-3e8b-4f04-8297-e0b45d78666a`) completed all five cases and twenty metrics in 183.81 seconds. It recorded 78 provider calls, 114,615 tokens and $0.0247768266, with no metric errors or calls with unavailable cost. Generation and judging used the configured `deepseek/deepseek-v4.1-flash` Chat profile, version 2. The active NTI corpus contained 12 sources and 118 indexed chunks.
+
+| Production Ragas metric | Mean | Scored cases |
+| --- | ---: | ---: |
+| Context precision | 0.9386 | 5 |
+| Context recall | 0.9143 | 5 |
+| Faithfulness | 1.0000 | 5 |
+| Factual correctness F1 | 0.6040 | 5 |
+
+The evidence-fields case retrieved all six required field names and scored 1.0 for context precision, context recall and faithfulness, with 0.82 reference F1. The four English questions received English responses, and the mixed Indonesian question received Indonesian. These checks address those examples only. The generator and judge still share a model, and 1.0 faithfulness on five authored cases does not establish a hallucination-free system. Results remain inspectable in the deployed Evaluation view.
+
 For stronger evidence, expand the set with held-out questions, bilingual paraphrases, hard negatives, genuine unanswerable requests and human-reviewed references. Use a separately configured judge and multiple repetitions when comparing models or chunking policies. Keep sample counts, errors, cost and versioned evidence beside the scores.

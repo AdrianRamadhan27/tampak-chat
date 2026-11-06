@@ -77,13 +77,13 @@ Vision still requires an image-input probe. Its interpretation quality and actua
 
 ## Expanded corpus and live embeddings
 
-The NTI refresh expands the incident report from eight to 32 pages and the playbook from four to 16 pages. It also adds seven distinct documents: gateway integration contracts, transaction-state reference, routing/failover policy, reconciliation handbook, data/import guide, communication templates and a reliability-review checklist. The corpus now has **12 sources, 60 physical PDF pages, 11,167 document words and 109 chunks**. Page 7's original finding and the numerical CSV are preserved. New files are immutable revisions; old citations still refer to their original revision. Refresh idempotency and content preservation have an integration test.
+The NTI refresh expands the incident report from eight to 32 pages and the playbook from four to 16 pages. It also adds seven distinct documents: gateway integration contracts, transaction-state reference, routing/failover policy, reconciliation handbook, data/import guide, communication templates and a reliability-review checklist. This refresh produced **12 sources, 60 physical PDF pages, 11,167 document words and initially 109 chunks**. Page 7's original finding and the numerical CSV are preserved. New files are immutable revisions; old citations still refer to their original revision. Refresh idempotency and content preservation have an integration test. The subsequent section-aware reindex increased the active chunk count to 118, as described below.
 
 The initial Nemotron probe returned 4,096 dimensions, a relevant cosine of 0.69275 and an unrelated cosine of 0.08164. Its larger document batches returned upstream inference errors; single-chunk requests succeeded until the free daily quota was exhausted. Both batch-size-one and batch-size-twelve retry paths have deterministic tests.
 
 After OpenRouter rejected requests with `free-models-per-day`, the owner explicitly authorized a cheap paid replacement. The selected [Qwen3 Embedding 8B](https://openrouter.ai/qwen/qwen3-embedding-8b) lists $0.01/M input tokens. Requests apply that price cap and use a query instruction as documented in [Qwen's model card](https://huggingface.co/Qwen/Qwen3-Embedding-8B). Its live probe returned 4,096 dimensions, a relevant cosine of **0.82463** and an unrelated cosine of **0.15723**.
 
-All **109 chunks across 12 NTI sources** are indexed under the Qwen/model/query-format fingerprint. Every active chunk has matching dimensions and fingerprint; all revisions report READY. OpenRouter reported **15,717 input tokens and $0.00015717 across 16 indexing calls**. No vectors remain pending. Legacy model vectors are excluded even when dimensions match; integration checks verify that incompatible fingerprints trigger re-embedding.
+The initial **109 chunks across 12 NTI sources** were indexed under the Qwen/model/query-format fingerprint. Every active chunk had matching dimensions and fingerprint; all revisions reported READY. OpenRouter reported **15,717 input tokens and $0.00015717 across 16 indexing calls** for that initial index. Legacy model vectors are excluded even when dimensions match; integration checks verify that incompatible fingerprints trigger re-embedding.
 
 The larger corpus exposed a source-selection issue in the SOP diagram journey. Retrieval now removes common query/presentation words from lexical terms and scopes explicitly named-document questions to matching authorized sources. The real paid embedding query and a deterministic integration test both retrieve the page-3 response steps for the incident-SOP question.
 
@@ -97,7 +97,7 @@ The [first successful Actions deployment](https://github.com/AdrianRamadhan27/ta
 
 **Private access.** Anonymous bot access and guest creation return HTTP 401. Admin sign-in uses Secure HttpOnly cookies and works in the deployed browser UI; logout revokes API access. The added integration test also rejects pre-existing guest cookies in private mode. All three configured provider profiles are available to the administrator without returning secret key values.
 
-**Seed transfer.** The new production database has all 12 sources and 109 normalized vectors, with matching 4,096-dimensional metadata and embedding fingerprints. Model keys were re-encrypted under a fresh production master key. This transfer made no new embedding calls and excluded local conversations and temporary guest data.
+**Seed transfer.** The initial production database received all 12 sources and 109 normalized vectors, with matching 4,096-dimensional metadata and embedding fingerprints. Model keys were re-encrypted under a fresh production master key. This transfer made no new embedding calls and excluded local conversations and temporary guest data.
 
 **Real SSE through HTTPS.** A provider-backed SOP question produced its first visible text after 6.353 seconds in this check. The client disconnected, returned while the run was still RUNNING, received 216 remaining text events and reconstructed exactly the persisted answer without duplicate text. The run reported 1,948 input tokens, 757 output tokens, three model calls and $0.00051929. Its follow-up reused the exact originating citations with one Chat call. These are individual observed runs, not latency or quality benchmarks.
 
@@ -106,3 +106,11 @@ The [first successful Actions deployment](https://github.com/AdrianRamadhan27/ta
 Private deployment logs, reports and screenshots remain under `runtime/`, outside Git. Administrator credentials are in a separate private file for the owner to share with reviewers. See [VPS deployment and operations](DEPLOYMENT.md).
 
 Public-load testing, stronger isolation for hostile public uploads, off-host backups and a complete backup/restore drill remain future operations. Vision interpretation and the broader retrieval/parser quality benchmarks are still unverified.
+
+## Section-aware reindex and production evaluation
+
+The production question **Minimum evidence fields apa aja** initially retrieved a prose chunk ending in the section heading while missing the following table. This was a retrieval failure, not an empty streaming completion. The `section-v2` chunker now begins a group at parsed headings and repeats the heading on the section's prose, table fragments and figure descriptions. Table fragments preserve column headers, row ranges and source locators. Seven regression tests cover the heading/table case and bounded splitting behavior.
+
+Both DOCX sources were reprocessed into new immutable revisions, preserving their extraction content and all historical citations. The active local and production corpus now contains **118 normalized vectors across 12 sources**, with no vectors pending. The exact production query retrieved the complete six-field handbook table at rank 1 and returned all six fields with an authorized citation. The viewer highlights both the heading and table.
+
+The deployed evaluation feature then completed five authored cases through the same production graph, with all twenty Ragas metrics available. It recorded 78 provider calls, 114,615 tokens and $0.0247768266. Case-level results, scored sample counts and methodology are documented in [RAG evaluation](EVALUATION.md). This is a small regression suite, not the proposed forty-question independent benchmark.
