@@ -173,9 +173,20 @@ export function Workspace() {
         const savedBot =
           params.get("bot") || localStorage.getItem(`tampak:${next.id}:bot`);
         const selected = bots.find((bot) => bot.id === savedBot) ?? bots[0];
-        const savedChat =
+        let savedChat =
           params.get("chat") ||
           localStorage.getItem(`tampak:${next.id}:${selected?.id}:chat`);
+        if (savedChat && !params.has("chat")) {
+          try {
+            await api(`/conversations/${savedChat}`);
+          } catch (error) {
+            if (!(error instanceof ApiError) || error.status !== 404)
+              throw error;
+            localStorage.removeItem(`tampak:${next.id}:${selected?.id}:chat`);
+            savedChat = null;
+          }
+          if (disposed) return;
+        }
         const savedView = params.get("view");
         const nextView: View = [
           "chat",
