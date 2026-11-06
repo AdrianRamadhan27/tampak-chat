@@ -21,6 +21,7 @@ The local application is implemented. Analytics, document processing and transpa
 | Pipeline and metrics | Independent toggles; panel to the right above 1100 px and below the chat at narrower widths; readable two-column stage graph; actual timings, rankings, ingestion events, provider-attempt ledger, tokens, cost and conversation totals. |
 | Citation viewer | Pinned revision; physical PDF page and parser-derived highlights; zoom and rotation; structural anchors for native text/DOCX; explicit page-only fallback. Chunks can be inspected against their source. |
 | Back office | Provider URL, catalog/manual model, separate chat/vision roles, fixed embedding role, masked key state, capabilities, OpenRouter reasoning control, pricing, probes, budgets and operational run history. |
+| RAG evaluation | Admin test-case editing, five NTI examples, immutable evaluation snapshots, real production-graph answers, four Ragas collection metrics, deterministic evidence checks, score charts, per-case inspection, cancellation, history and JSON export. The configured Chat model serves as judge, with all calls in the existing budget and usage ledger. |
 | Lifecycle | Fixed 24-hour guest lifetime, quotas shown in the sidebar, cancellation, lease-loss interruption, expiry deletion and orphan-artifact sweep. |
 
 ## Deliberate implementation decisions

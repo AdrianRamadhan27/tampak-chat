@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./evaluations.css";
 
 :root {
   --bg: #f6f7f4;

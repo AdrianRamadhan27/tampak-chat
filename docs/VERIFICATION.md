@@ -8,7 +8,7 @@ The application was checked locally in native production mode and as the complet
 
 | Check | Result |
 | --- | --- |
-| Python backend | **76 passed** locally, using a disposable PostgreSQL database with its own key-free API/workers and private artifacts; GitHub Actions reruns the same suite before deployment |
+| Python backend | **84 passed** locally, using a disposable PostgreSQL database with its own key-free API/workers and private artifacts; GitHub Actions reruns the same suite before deployment |
 | Python lint | Ruff passed for backend modules, tests and the OCR browser fixture generator |
 | Frontend | TypeScript, ESLint and Prettier checks passed |
 | Production packaging | Next.js standalone build and complete Docker Compose build/start passed |
@@ -45,6 +45,10 @@ Backend tests create a randomly named `tampak_test_*` database, clear inference 
 **Document provenance.** Seed PDF page 7 contains the cited incident finding and real normalized parser geometry. Table chunks repeat headers and retain row ranges. Native DOCX uses section anchors without invented page boxes. Repeated passages retain distinct source positions. A real local Tesseract image check verifies recognized text and word confidence/geometry. Retry tests verify that completed embedding batches are reused and changed text loses stale vectors. Empty extraction cannot be published as searchable.
 
 **Section/table retrieval regression.** The production question “Minimum evidence fields apa aja” selected a handbook chunk ending in that heading, while its separate six-row table was absent from the six selected passages. The model completed with an unsupported-fields explanation rather than the requested list. The `section-v2` chunker keeps the heading and full small table together, repeats the heading and column headers on larger row groups, and starts a new group at subsequent headings. Seven added regression tests cover that exact bilingual retrieval query, all six handbook fields, row preservation, figure context, cross-page provenance, large cell fragments and bounded oversized headings/headers. Prior source revisions remain available; adopting the new chunks requires reprocessing and approving a new revision.
+
+Both DOCX references were reprocessed as new revisions locally and in production. Their active chunk counts changed from 16 to 19 and from four to ten, bringing the active NTI index to **118 vectors across 12 sources**. Original chunk records and citations remain unchanged. A new production run of the exact reported question retrieved the evidence-fields table first and returned all six fields, with heading and table locators in the same citation. The reported cost was $0.000286375 for that individual run.
+
+**Evaluation contracts.** Eight added tests cover administrator/API and database access, case editing/deletion and cross-bot source rejection, idempotent examples, request-key enforcement, immutable case/corpus snapshots, execution through the actual key-free graph, generator-plus-judge cost limits, and the real Ragas faithfulness implementation with a fixture-backed ledger adapter. Averages exclude missing values and retain real zeroes. These deterministic tests do not claim model quality. Live results and methodology are described in [RAG evaluation](EVALUATION.md).
 
 **Provider contracts and costs.** Mock HTTP tests cover compatible SSE content, usage, failures, fixed embedding model/endpoint and dimensions. Ledger tests distinguish reported, calculated and unavailable costs; failed/uncertain attempts keep their budget reservations. These checks establish adapter behavior rather than provider availability or semantic model quality.
 

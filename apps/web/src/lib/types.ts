@@ -1,4 +1,5 @@
-export type View = "chat" | "bots" | "sources" | "activity" | "admin";
+export type View =
+  "chat" | "bots" | "sources" | "activity" | "evaluations" | "admin";
 export type Status =
   "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED" | "INTERRUPTED";
 export type Capability = {

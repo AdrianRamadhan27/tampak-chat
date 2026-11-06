@@ -7,6 +7,7 @@ A document and analytics chatbot workspace with visible workings. Built for the 
 - **Exact analytics:** typed, read-only dataset queries calculate rates, trends, period comparisons and contribution to an increase, with charts and inspectable source records.
 - **Configurable document processing:** native extraction, Docling layout reconstruction, OCR and vision preserve tables, figures and source locations through reviewed document revisions.
 - **Transparent RAG and observability:** follow retrieval rankings and tools, open highlighted evidence, and watch latency, token estimates and USD cost reconcile through durable SSE.
+- **RAG evaluation:** maintain reference test cases, run the actual chatbot through Ragas retrieval and answer metrics, inspect visual scores and evidence, and export measured results with token and cost accounting. See [evaluation details](docs/EVALUATION.md).
 
 The approved **Focus** interface has a compact sidebar that expands on hover or keyboard focus, with a separate touch toggle. Pipeline and Metrics are independent controls in a right-hand panel on wide screens; at 1100 px and below they move beneath the chat. Charts, follow-up actions and citations work with both controls off. Each chatbot retrieves only its own knowledge; composer attachments are private to their conversation.
 

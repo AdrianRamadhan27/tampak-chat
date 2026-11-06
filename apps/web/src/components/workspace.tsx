@@ -11,6 +11,7 @@ import {
   ChevronDown,
   CircleHelp,
   FileText,
+  FlaskConical,
   FolderOpen,
   Layers,
   LoaderCircle,
@@ -72,11 +73,13 @@ const Admin = dynamic(() => import("./admin"), {
   ),
 });
 const Login = dynamic(() => import("./login"));
+const Evaluations = dynamic(() => import("./evaluations"));
 const NAV = [
   { view: "chat", label: "Conversation", icon: MessageSquare },
   { view: "bots", label: "Chatbots", icon: Layers },
   { view: "sources", label: "Knowledge", icon: FolderOpen },
   { view: "activity", label: "Activity", icon: Activity },
+  { view: "evaluations", label: "Evaluation", icon: FlaskConical },
 ] as const;
 
 export function Workspace() {
@@ -179,6 +182,7 @@ export function Workspace() {
           "bots",
           "sources",
           "activity",
+          "evaluations",
           "admin",
         ].includes(savedView ?? "")
           ? (savedView as View)
@@ -517,7 +521,9 @@ export function Workspace() {
         </button>
         <div className="sidebar-divider" />
         <nav>
-          {NAV.map((item) => (
+          {NAV.filter(
+            (item) => item.view !== "evaluations" || session.kind === "ADMIN",
+          ).map((item) => (
             <button
               className={`nav-item ${view === item.view ? "active" : ""}`}
               key={item.view}
@@ -1082,6 +1088,14 @@ export function Workspace() {
           )}
           {view === "admin" && (
             <Admin session={session} onSessionChanged={sessionChanged} />
+          )}
+          {view === "evaluations" && bot && session.kind === "ADMIN" && (
+            <Evaluations
+              key={bot.id}
+              bot={bot}
+              sources={sources}
+              onCitation={openSource}
+            />
           )}
         </main>
       </div>

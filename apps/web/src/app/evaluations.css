@@ -1,0 +1,369 @@
+.evaluation-page {
+  max-width: 1440px;
+}
+.eval-actions,
+.eval-toolbar,
+.eval-run-header,
+.eval-section-heading,
+.eval-case-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+}
+.eval-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+.eval-toolbar {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+}
+.eval-run-header {
+  gap: 24px;
+  margin: 24px 0;
+}
+.eval-run-header label {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 580px;
+  flex: 1;
+}
+.eval-run-header select {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 12px;
+  color: var(--ink);
+  font: inherit;
+}
+.eval-progress {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
+  padding: 16px 0 24px;
+}
+.eval-progress strong {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 500;
+}
+.eval-progress strong span {
+  color: var(--subtle);
+  font-size: 16px;
+}
+.eval-progress p,
+.eval-section-heading p {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 8px 0 0;
+  line-height: 1.6;
+}
+.eval-progress-bar {
+  width: 100%;
+  height: 4px;
+  accent-color: var(--green);
+  margin-bottom: 20px;
+}
+.eval-score-section,
+.eval-case-detail {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.eval-section-heading {
+  align-items: flex-start;
+}
+.eval-section-heading h2 {
+  font-size: 19px;
+  font-weight: 600;
+  margin: 0;
+}
+.eval-chart {
+  height: 240px;
+  margin-top: 24px;
+}
+.eval-metric-legend {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.eval-metric-legend span {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+.eval-metric-legend strong {
+  font-size: 26px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+.eval-metric-legend p {
+  font-size: 11px;
+  margin: 6px 0 0;
+}
+.eval-metric-legend small {
+  color: var(--muted);
+  display: block;
+  margin-top: 4px;
+}
+.eval-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  margin-bottom: 24px;
+}
+.eval-score-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.eval-score-table th {
+  text-align: left;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 500;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  min-width: 100px;
+}
+.eval-score-table td {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+}
+.eval-score-table td:first-child {
+  min-width: 200px;
+  max-width: 300px;
+  font-family: var(--font-sans);
+}
+.eval-score-table button {
+  text-align: left;
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.eval-score-table tr:last-child td {
+  border-bottom: 0;
+}
+.eval-score-table tr.selected td:first-child {
+  box-shadow: inset 3px 0 var(--green);
+}
+.eval-good {
+  color: var(--green);
+  background: var(--green-soft);
+}
+.eval-mid {
+  color: var(--amber);
+  background: var(--amber-soft);
+}
+.eval-low {
+  color: var(--red);
+  background: var(--red-soft);
+}
+.eval-unavailable {
+  color: var(--subtle);
+}
+.eval-answer-comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-top: 24px;
+}
+.eval-answer-comparison h3,
+.eval-test-case h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+.eval-answer-comparison p,
+.eval-reference {
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 0;
+  white-space: pre-wrap;
+}
+.eval-response {
+  max-height: 460px;
+  overflow: auto;
+}
+.eval-case-detail details,
+.eval-methods,
+.eval-test-case details {
+  margin-top: 20px;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.eval-case-detail summary,
+.eval-test-case summary,
+.eval-methods summary,
+.eval-editor summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+.eval-case-detail pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 11px/1.8 var(--font-mono);
+  padding: 16px;
+  background: var(--surface-soft);
+  border-radius: 8px;
+  margin-top: 12px;
+}
+.eval-citations {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.eval-citations .button {
+  max-width: 100%;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.eval-diagnostics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+  padding-top: 20px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.eval-diagnostics strong {
+  display: block;
+  font: 18px var(--font-mono);
+  color: var(--ink);
+  margin-top: 8px;
+}
+.eval-metric-error {
+  color: var(--amber);
+  font-size: 12px;
+  margin-top: 16px;
+}
+.eval-disclosure {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.8;
+  margin: 16px 0;
+}
+.eval-methods a {
+  color: var(--green);
+  text-decoration: underline;
+}
+.eval-test-case {
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+.eval-case-title {
+  align-items: flex-start;
+}
+.eval-case-title p {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+  margin: 0;
+}
+.eval-run-form,
+.eval-editor {
+  display: grid;
+  gap: 20px;
+}
+.eval-run-form fieldset,
+.eval-editor fieldset {
+  display: grid;
+  gap: 12px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.eval-run-form legend,
+.eval-editor legend {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.eval-check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  cursor: pointer;
+  min-height: 32px;
+}
+.eval-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--green);
+  flex-shrink: 0;
+}
+.eval-check small {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+}
+.eval-editor fieldset {
+  max-height: 220px;
+  overflow: auto;
+  margin: 12px 0;
+}
+.eval-editor .field textarea {
+  resize: vertical;
+}
+.eval-editor small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.eval-run-form > .muted {
+  font-size: 12px;
+  line-height: 1.8;
+}
+@media (max-width: 800px) {
+  .evaluation-page .page-heading,
+  .eval-run-header,
+  .eval-case-title {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .eval-progress,
+  .eval-metric-legend {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+  }
+  .eval-answer-comparison {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .eval-score-section,
+  .eval-case-detail,
+  .eval-test-case {
+    padding: 16px;
+  }
+  .eval-progress strong {
+    font-size: 20px;
+  }
+  .eval-chart {
+    margin-left: -8px;
+    margin-right: -8px;
+  }
+}
