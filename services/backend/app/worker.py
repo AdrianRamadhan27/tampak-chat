@@ -11,6 +11,7 @@ from uuid import UUID
 from app import db
 from app.chat import CancelledRun, execute_run
 from app.errors import AppError
+from app.evaluation import execute_evaluation, interrupt_answers, persist
 from app.events import emit
 from app.ingestion import index_revision, process_revision, storage_path
 
@@ -20,11 +21,11 @@ logger = logging.getLogger("tampak.worker")
 async def claim(kind: str) -> dict | None:
     async with db.connection() as conn:
         cursor = await conn.execute(
-            "WITH next AS (SELECT id FROM jobs WHERE kind=%s AND status='QUEUED' AND available_at<=now() "
-            "ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1) "
+            "WITH next AS (SELECT id FROM jobs WHERE kind=ANY(%s::text[]) AND status='QUEUED' AND available_at<=now() "
+            "ORDER BY CASE WHEN kind='chat' THEN 0 ELSE 1 END,created_at FOR UPDATE SKIP LOCKED LIMIT 1) "
             "UPDATE jobs j SET status='RUNNING',attempts=attempts+1,lease_token=%s,"
             "lease_until=now()+interval '45 seconds',heartbeat_at=now() FROM next WHERE j.id=next.id RETURNING j.*",
-            (kind, db.new_id()),
+            (["chat", "evaluation"] if kind == "chat" else [kind], db.new_id()),
         )
         return await cursor.fetchone()
 
@@ -49,7 +50,18 @@ async def cancellation(job: dict) -> None:
         )
         if not principal or principal["expires_at"] and principal["expires_at"] < db.now():
             return
-        if job["kind"] == "chat":
+        if job["kind"] == "evaluation":
+            evaluation = await db.one(
+                "SELECT cancel_requested,status FROM evaluation_runs WHERE id=%s",
+                (job["target_id"],),
+            )
+            if (
+                not evaluation
+                or evaluation["cancel_requested"]
+                or evaluation["status"] in {"CANCELLED", "INTERRUPTED"}
+            ):
+                return
+        elif job["kind"] == "chat":
             run = await db.one(
                 "SELECT cancel_requested,status FROM runs WHERE id=%s", (job["target_id"],)
             )
@@ -69,7 +81,20 @@ async def cancellation(job: dict) -> None:
 
 async def fail(job: dict, status: str, error: dict) -> None:
     target, owner = str(job["target_id"]), str(job["owner_id"])
-    if job["kind"] == "chat":
+    if job["kind"] == "evaluation":
+        await interrupt_answers(target, status, error)
+        batch = await db.one("SELECT * FROM evaluation_runs WHERE id=%s", (target,))
+        if batch:
+            for case in batch["cases"]:
+                if case["status"] not in {"COMPLETED", "PARTIAL", "FAILED"}:
+                    case["status"] = "SKIPPED" if case["status"] == "QUEUED" else status
+            await persist(batch)
+        await db.execute(
+            "UPDATE evaluation_runs SET status=%s,error=%s,finished_at=now() WHERE id=%s AND status IN ('QUEUED','RUNNING')",
+            (status, db.jsonb(error), target),
+        )
+        await emit(owner, target, "evaluation.ended", {"status": status, "error": error})
+    elif job["kind"] == "chat":
         async with db.connection() as conn:
             await conn.execute(
                 "UPDATE runs SET status=%s,error=%s,finished_at=now() WHERE id=%s AND status IN ('QUEUED','RUNNING')",
@@ -121,7 +146,9 @@ async def recover_expired() -> None:
 
 async def run_job(job: dict) -> None:
     task = asyncio.create_task(
-        execute_run(str(job["target_id"]))
+        execute_evaluation(str(job["target_id"]))
+        if job["kind"] == "evaluation"
+        else execute_run(str(job["target_id"]))
         if job["kind"] == "chat"
         else index_revision(str(job["target_id"]))
         if job["payload"].get("step") == "index"

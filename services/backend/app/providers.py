@@ -102,6 +102,35 @@ async def start_call(row: dict, owner: str, stream_id: str, text: str, admin: bo
     ) / Decimal(1_000_000)
     async with db.connection() as conn:
         await conn.execute("SELECT pg_advisory_xact_lock(76813043)")
+        evaluation = await (
+            await conn.execute(
+                "SELECT e.id,e.max_cost_usd FROM evaluation_runs e WHERE e.id=%s OR e.id="
+                "(SELECT c.evaluation_run_id FROM runs r JOIN conversations c ON c.id=r.conversation_id WHERE r.id=%s)",
+                (stream_id, stream_id),
+            )
+        ).fetchone()
+        if evaluation:
+            if row["input_price"] is None or row["output_price"] is None:
+                raise AppError(
+                    "PRICE_REQUIRED",
+                    "Evaluation requires configured provider pricing for its cost limit.",
+                    409,
+                )
+            reserved = await (
+                await conn.execute(
+                    "SELECT coalesce(sum(b.amount_usd),0) AS used FROM budget_reservations b "
+                    "JOIN provider_calls p ON p.id=b.id WHERE b.status!='RELEASED' AND "
+                    "(p.stream_id=%s OR p.stream_id IN (SELECT r.id FROM runs r JOIN conversations c "
+                    "ON c.id=r.conversation_id WHERE c.evaluation_run_id=%s))",
+                    (evaluation["id"], evaluation["id"]),
+                )
+            ).fetchone()
+            if reserved["used"] + amount > evaluation["max_cost_usd"]:
+                raise AppError(
+                    "EVALUATION_BUDGET_EXCEEDED",
+                    "This evaluation reached its cost limit. Completed scores and usage are preserved.",
+                    429,
+                )
         if not admin:
             quota = await (
                 await conn.execute(

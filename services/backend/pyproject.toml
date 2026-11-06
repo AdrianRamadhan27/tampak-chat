@@ -27,6 +27,8 @@ dependencies = [
   "reportlab>=4.3",
   "tiktoken>=0.9",
   "charset-normalizer>=3.4",
+  "ragas==0.4.3",
+  "langchain-community==0.3.31",
 ]
 
 [project.optional-dependencies]

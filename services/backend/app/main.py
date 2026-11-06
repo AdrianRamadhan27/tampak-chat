@@ -22,6 +22,7 @@ from app import auth, db, providers
 from app.analytics import AnalysisPlan, Mapping, inspect_records
 from app.config import EMBEDDING_MODEL, settings
 from app.errors import AppError, app_error_handler
+from app.evaluation_api import router as evaluation_router
 from app.events import stream
 from app.ingestion import ProcessingOptions, queue, storage_path, store_upload
 
@@ -43,6 +44,7 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
 )
 app.add_exception_handler(AppError, app_error_handler)
+app.include_router(evaluation_router)
 
 
 @app.exception_handler(RequestValidationError)
@@ -353,7 +355,7 @@ async def conversations(bot_id: UUID, user=Depends(identity)):
     return db.serializable(
         await db.many(
             "SELECT c.*, (SELECT status FROM runs r WHERE r.conversation_id=c.id ORDER BY r.created_at DESC LIMIT 1) AS run_status "
-            "FROM conversations c WHERE bot_id=%s AND owner_id=%s AND deleted_at IS NULL ORDER BY updated_at DESC LIMIT 50",
+            "FROM conversations c WHERE bot_id=%s AND owner_id=%s AND deleted_at IS NULL AND evaluation_run_id IS NULL ORDER BY updated_at DESC LIMIT 50",
             (str(bot_id), user.id),
             user.scope,
         )

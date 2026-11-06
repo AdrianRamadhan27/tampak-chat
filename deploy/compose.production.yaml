@@ -90,7 +90,7 @@ services:
     networks: [private, egress]
     depends_on:
       api: {condition: service_healthy}
-    mem_limit: 384m
+    mem_limit: 640m
     cpus: 0.75
 
   ingest-worker:
